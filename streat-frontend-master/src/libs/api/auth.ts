@@ -1,5 +1,3 @@
-// src/libs/api/auth.ts
-
 import { API_BASE_URL } from "@/libs/constants";
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
@@ -11,18 +9,35 @@ interface LoginResponse {
   token_type: string;
 }
 
+// Function to get the appropriate fetch options based on environment
+function getFetchOptions(options: RequestInit = {}): RequestInit {
+  const fetchOptions = { ...options };
+  
+  // Only add Node.js specific options when running on the server
+  if (typeof window === 'undefined') {
+    // This runs only on the server side
+    const https = require('https');
+    // @ts-ignore - TypeScript doesn't know about the agent property in a Node environment
+    fetchOptions.agent = new https.Agent({
+      rejectUnauthorized: false // WARNING: Insecure for production
+    });
+  }
+  
+  return fetchOptions;
+}
+
 export async function getAccessToken(username: string, password: string): Promise<LoginResponse> {
   const body = new URLSearchParams();
   body.append("username", username);
   body.append("password", password);
 
-  const res = await fetch(`${API_BASE_URL}/login/access-token`, {
+  const res = await fetch(`${API_BASE_URL}/login/access-token`, getFetchOptions({
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: body.toString(), // form-encoded
-  });
+  }));
 
   if (!res.ok) {
     const error = await res.json();
@@ -35,13 +50,13 @@ export async function getAccessToken(username: string, password: string): Promis
 }
 
 export async function loginUser(token: string) {
-  const res = await fetch(`${API_BASE_URL}/login/test-token`, {
+  const res = await fetch(`${API_BASE_URL}/login/test-token`, getFetchOptions({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`
     },
-  });
+  }));
 
   if (!res.ok) {
     const error = await res.json();
@@ -52,11 +67,11 @@ export async function loginUser(token: string) {
 }
 
 export async function signup(email: string, password: string, username: string) {
-  const res = await fetch(`${API_BASE_URL}/signup`, {
+  const res = await fetch(`${API_BASE_URL}/signup`, getFetchOptions({
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, username }),
-  });
+  }));
 
   if (!res.ok) {
     const errorData = await res.json();
@@ -86,11 +101,11 @@ export const authOptions: NextAuthOptions = {
           body.append("username", credentials.username);
           body.append("password", credentials.password);
 
-          const res = await fetch(`${API_BASE_URL}/login/access-token`, {
+          const res = await fetch(`${API_BASE_URL}/login/access-token`, getFetchOptions({
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: body.toString(),
-          });
+          }));
 
           if (!res.ok) {
             return null;
